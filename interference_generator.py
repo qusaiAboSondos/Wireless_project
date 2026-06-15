@@ -104,9 +104,10 @@ def continuous_ping_log(target_ip: str, stop_event: threading.Event,
 
 def transmit_interference(center_freq_hz: float, bandwidth_hz: float,
                            tx_gain_db: int, duration_s: float,
-                           signal_type: str = "noise") -> None:
+                           signal_type: str = "noise",
+                           uri: str | None = None) -> None:
     """Configure PlutoSDR TX and transmit interference for duration_s seconds."""
-    sdr = adi.Pluto(PLUTO_IP)
+    sdr = adi.Pluto(uri or PLUTO_IP)
     sdr.sample_rate         = int(SAMPLE_RATE)
     sdr.tx_rf_bandwidth     = int(SAMPLE_RATE)
     sdr.tx_lo               = int(center_freq_hz)
@@ -176,6 +177,7 @@ def run_experiment(config: dict) -> dict:
         tx_gain_db=config.get("tx_gain_db", DEFAULT_TX_GAIN),
         duration_s=duration_s,
         signal_type=config.get("signal_type", "noise"),
+        uri=config.get("pluto_uri", None),
     )
 
     # Stop ping logging

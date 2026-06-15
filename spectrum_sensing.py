@@ -26,11 +26,11 @@ SAMPLE_RATE   = 20e6       # 20 MHz sample rate
 RX_GAIN       = 40         # dB (manual gain)
 FFT_SIZE      = 1024
 NUM_FRAMES    = 20         # frames averaged per sweep step
-PLUTO_IP      = "ip:192.168.2.1"
+PLUTO_IP      = "ip:192.168.2.1"   # RX device — override via --rx-uri
 
 
-def create_sdr(center_freq: float) -> adi.Pluto:
-    sdr = adi.Pluto(PLUTO_IP)
+def create_sdr(center_freq: float, uri: str = PLUTO_IP) -> adi.Pluto:
+    sdr = adi.Pluto(uri)
     sdr.sample_rate         = int(SAMPLE_RATE)
     sdr.rx_rf_bandwidth     = int(SAMPLE_RATE)
     sdr.rx_lo               = int(center_freq)
@@ -61,7 +61,8 @@ def capture_psd(sdr: adi.Pluto, center_freq: float) -> tuple[np.ndarray, np.ndar
     return freqs, psd_dbm
 
 
-def sweep_band(start_hz: float, end_hz: float) -> tuple[np.ndarray, np.ndarray]:
+def sweep_band(start_hz: float, end_hz: float,
+               uri: str = PLUTO_IP) -> tuple[np.ndarray, np.ndarray]:
     """Sweep across a wide band by stepping the LO center frequency."""
     span      = end_hz - start_hz
     step      = SAMPLE_RATE * 0.8          # 80 % of bandwidth per step (avoid roll-off edges)
@@ -72,7 +73,7 @@ def sweep_band(start_hz: float, end_hz: float) -> tuple[np.ndarray, np.ndarray]:
     all_freqs = np.array([])
     all_psd   = np.array([])
 
-    sdr = create_sdr(centers[0])
+    sdr = create_sdr(centers[0], uri=uri)
     try:
         for cf in centers:
             f, p   = capture_psd(sdr, cf)
@@ -116,9 +117,10 @@ def plot_psd(freqs: np.ndarray, psd: np.ndarray, band_label: str,
     plt.show()
 
 
-def live_spectrum(center_freq: float, band_label: str, duration_s: float = 30.0) -> None:
+def live_spectrum(center_freq: float, band_label: str,
+                  duration_s: float = 30.0, uri: str = PLUTO_IP) -> None:
     """Display a real-time scrolling spectrogram for a fixed center frequency."""
-    sdr = create_sdr(center_freq)
+    sdr = create_sdr(center_freq, uri=uri)
     freqs = center_freq + np.fft.fftshift(np.fft.fftfreq(FFT_SIZE, 1 / SAMPLE_RATE))
 
     waterfall_rows = 100
