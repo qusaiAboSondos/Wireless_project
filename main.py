@@ -31,20 +31,21 @@ def ask_uris() -> tuple[str, str]:
 
 # ─── Modes ────────────────────────────────────────────────────────────────────
 
-def run_sensing_only() -> None:
-    rx_uri = input("\nRX device URI [ip:192.168.2.1]: ").strip() or "ip:192.168.2.1"
-    # Inject URI into the sensing module at runtime
+def run_sensing_only(rx_uri: str | None = None) -> None:
+    if rx_uri is None:
+        rx_uri = input(f"\nRX device URI [{sensing.PLUTO_IP}]: ").strip() or sensing.PLUTO_IP
     sensing.PLUTO_IP = rx_uri
     sensing.main()
 
 
-def run_interference_only() -> None:
-    tx_uri = input("\nTX device URI [ip:192.168.2.1]: ").strip() or "ip:192.168.2.1"
+def run_interference_only(tx_uri: str | None = None) -> None:
+    if tx_uri is None:
+        tx_uri = input(f"\nTX device URI [{interference.PLUTO_IP}]: ").strip() or interference.PLUTO_IP
     interference.PLUTO_IP = tx_uri
     interference.main()
 
 
-def run_concurrent() -> None:
+def run_concurrent(rx_uri: str | None = None, tx_uri: str | None = None) -> None:
     """
     Parallel mode:
       - PLUTO #2 (TX) transmits interference in a background thread
@@ -56,7 +57,8 @@ def run_concurrent() -> None:
     print("║  PLUTO #2 → TX (interference)                    ║")
     print("╚══════════════════════════════════════════════════╝\n")
 
-    rx_uri, tx_uri = ask_uris()
+    if rx_uri is None or tx_uri is None:
+        rx_uri, tx_uri = ask_uris()
 
     # ── Interference configuration ──────────────────────────────────────────
     target_ip = input("Target IP to ping during interference [8.8.8.8]: ").strip() or "8.8.8.8"
@@ -123,11 +125,11 @@ def main() -> None:
         interference.PLUTO_IP = args.tx_uri
 
     if args.mode == "sense":
-        run_sensing_only()
+        run_sensing_only(rx_uri=args.rx_uri)
     elif args.mode == "interfere":
-        run_interference_only()
+        run_interference_only(tx_uri=args.tx_uri)
     elif args.mode == "concurrent":
-        run_concurrent()
+        run_concurrent(rx_uri=args.rx_uri, tx_uri=args.tx_uri)
     else:
         print("╔══════════════════════════════════════════╗")
         print("║  ENCS5323 – SDR Project Main Menu        ║")
