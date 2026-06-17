@@ -122,6 +122,7 @@ def live_spectrum(center_freq: float, band_label: str,
                   duration_s: float = 30.0, uri: str = PLUTO_IP) -> None:
     """Display a real-time scrolling spectrogram for a fixed center frequency."""
     sdr = create_sdr(center_freq, uri=uri)
+    sdr.rx_buffer_size = FFT_SIZE   # smaller buffer = faster, more responsive frames
     freqs = center_freq + np.fft.fftshift(np.fft.fftfreq(FFT_SIZE, 1 / SAMPLE_RATE))
 
     waterfall_rows = 100
@@ -152,10 +153,14 @@ def live_spectrum(center_freq: float, band_label: str,
             del sdr
             return line, img
 
-        raw  = sdr.rx()
-        win  = np.hanning(FFT_SIZE)
-        spec = np.fft.fftshift(np.abs(np.fft.fft(raw[:FFT_SIZE] * win)) ** 2)
-        psd  = 10 * np.log10(spec / FFT_SIZE ** 2 + 1e-20)
+        try:
+            raw  = sdr.rx()
+            win  = np.hanning(FFT_SIZE)
+            spec = np.fft.fftshift(np.abs(np.fft.fft(raw[:FFT_SIZE] * win)) ** 2)
+            psd  = 10 * np.log10(spec / FFT_SIZE ** 2 + 1e-20)
+        except Exception as exc:
+            print(f"[ERROR] live_spectrum update failed: {exc}")
+            return line, img
 
         line.set_ydata(psd)
         ax_psd.set_ylim(psd.min() - 5, psd.max() + 5)
@@ -165,7 +170,7 @@ def live_spectrum(center_freq: float, band_label: str,
         img.set_data(waterfall_data)
         return line, img
 
-    ani = animation.FuncAnimation(fig, update, interval=50, blit=False)
+    ani = animation.FuncAnimation(fig, update, interval=200, blit=False, cache_frame_data=False)
     plt.tight_layout()
     plt.show()
 
