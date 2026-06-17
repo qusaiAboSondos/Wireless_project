@@ -150,7 +150,6 @@ def live_spectrum(center_freq: float, band_label: str,
     def update(_frame):
         if time.time() - start_time > duration_s:
             ani.event_source.stop()
-            del sdr
             return line, img
 
         try:
