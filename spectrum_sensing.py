@@ -41,7 +41,7 @@ def create_sdr(center_freq: float, uri: str = PLUTO_IP) -> adi.Pluto:
 
 
 def capture_psd(sdr: adi.Pluto, center_freq: float) -> tuple[np.ndarray, np.ndarray]:
-    """Capture samples and compute averaged PSD in dBm."""
+    """Capture samples and compute averaged PSD in relative dB."""
     sdr.rx_lo = int(center_freq)
     time.sleep(0.05)   # settle after tuning
 
@@ -54,11 +54,12 @@ def capture_psd(sdr: adi.Pluto, center_freq: float) -> tuple[np.ndarray, np.ndar
         spec   = np.fft.fftshift(np.abs(np.fft.fft(frame * win, n=FFT_SIZE)) ** 2)
         psd_avg += spec / NUM_FRAMES
 
-    # Convert to dBm (50-ohm reference, account for window power loss)
-    psd_dbm = 10 * np.log10(psd_avg / (FFT_SIZE ** 2) + 1e-20) + 30
+    # Relative power in dB (uncalibrated ADC counts -> no absolute dBm reference
+    # is available without a hardware calibration step, so report relative scale)
+    psd_db = 10 * np.log10(psd_avg / (FFT_SIZE ** 2) + 1e-20)
 
     freqs = center_freq + np.fft.fftshift(np.fft.fftfreq(FFT_SIZE, 1 / SAMPLE_RATE))
-    return freqs, psd_dbm
+    return freqs, psd_db
 
 
 def sweep_band(start_hz: float, end_hz: float,
@@ -101,11 +102,11 @@ def plot_psd(freqs: np.ndarray, psd: np.ndarray, band_label: str,
                  f"Captured: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                  fontsize=12)
     ax.set_xlabel("Frequency (MHz)", fontsize=11)
-    ax.set_ylabel("Power (dBm)", fontsize=11)
+    ax.set_ylabel("Power (dB, relative)", fontsize=11)
     ax.set_xlim(freqs[0] / 1e6, freqs[-1] / 1e6)
     ax.set_ylim(psd.min() - 5, psd.max() + 5)
     ax.axhline(y=psd.mean(), color="orange", linestyle="--",
-               linewidth=0.8, label=f"Mean: {psd.mean():.1f} dBm")
+               linewidth=0.8, label=f"Mean: {psd.mean():.1f} dB")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10)
 
@@ -124,24 +125,24 @@ def live_spectrum(center_freq: float, band_label: str,
     freqs = center_freq + np.fft.fftshift(np.fft.fftfreq(FFT_SIZE, 1 / SAMPLE_RATE))
 
     waterfall_rows = 100
-    waterfall_data = np.full((waterfall_rows, FFT_SIZE), -100.0)
+    waterfall_data = np.full((waterfall_rows, FFT_SIZE), -30.0)
 
     fig, (ax_psd, ax_fall) = plt.subplots(2, 1, figsize=(12, 8))
     fig.suptitle(f"Live Spectrum – {band_label}", fontsize=12)
 
     line,   = ax_psd.plot(freqs / 1e6, np.zeros(FFT_SIZE), color="royalblue", lw=0.8)
     ax_psd.set_xlabel("Frequency (MHz)")
-    ax_psd.set_ylabel("Power (dBm)")
+    ax_psd.set_ylabel("Power (dB, relative)")
     ax_psd.set_xlim(freqs[0] / 1e6, freqs[-1] / 1e6)
-    ax_psd.set_ylim(-100, 0)
+    ax_psd.set_ylim(-30, 30)
     ax_psd.grid(True, alpha=0.3)
 
     img = ax_fall.imshow(waterfall_data, aspect="auto", origin="upper",
                          extent=[freqs[0] / 1e6, freqs[-1] / 1e6, waterfall_rows, 0],
-                         vmin=-100, vmax=0, cmap="inferno")
+                         vmin=-30, vmax=30, cmap="inferno")
     ax_fall.set_xlabel("Frequency (MHz)")
     ax_fall.set_ylabel("Time (frames, newest at top)")
-    fig.colorbar(img, ax=ax_fall, label="Power (dBm)")
+    fig.colorbar(img, ax=ax_fall, label="Power (dB, relative)")
 
     start_time = time.time()
 
@@ -154,7 +155,7 @@ def live_spectrum(center_freq: float, band_label: str,
         raw  = sdr.rx()
         win  = np.hanning(FFT_SIZE)
         spec = np.fft.fftshift(np.abs(np.fft.fft(raw[:FFT_SIZE] * win)) ** 2)
-        psd  = 10 * np.log10(spec / FFT_SIZE ** 2 + 1e-20) + 30
+        psd  = 10 * np.log10(spec / FFT_SIZE ** 2 + 1e-20)
 
         line.set_ydata(psd)
         ax_psd.set_ylim(psd.min() - 5, psd.max() + 5)
@@ -203,7 +204,7 @@ def main() -> None:
     else:
         print(f"\n[INFO] Sweeping {label} …")
         freqs, psd = sweep_band(start_hz, end_hz)
-        print(f"[INFO] Peak power: {psd.max():.1f} dBm at {freqs[np.argmax(psd)]/1e6:.3f} MHz")
+        print(f"[INFO] Peak power: {psd.max():.1f} dB (relative) at {freqs[np.argmax(psd)]/1e6:.3f} MHz")
         plot_psd(freqs, psd, label, save=True)
 
 
