@@ -4,11 +4,6 @@
 **Group Members:** <Name 1, ID> / <Name 2, ID> / <Name 3, ID> / <Name 4, ID — if applicable>
 **Date:** <submission date>
 
-> Formatting note: paste this into Word/Google Docs, set font to **Times New Roman 12pt**,
-> standard 1-inch margins. Target length: **6 pages excluding cover page**. Trim the
-> "Setup" bullets first if you run over — the rubric rewards results + discussion, not
-> implementation description.
-
 ---
 
 ## 1. Introduction
