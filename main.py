@@ -62,9 +62,14 @@ def run_concurrent(rx_uri: str | None = None, tx_uri: str | None = None) -> None
 
     # ── Interference configuration ──────────────────────────────────────────
     target_ip = input("Target IP to ping during interference [8.8.8.8]: ").strip() or "8.8.8.8"
+    chan_str  = input("Router's actual Wi-Fi channel [1-13, default 6]: ").strip()
+    channel   = int(chan_str) if chan_str else 6
+    cf        = interference.WIFI_CHANNELS.get(channel, interference.DEFAULT_CF)
+    print(f"[INFO] Using centre frequency {cf/1e6:.0f} MHz for channel {channel}")
+
     tx_config = {
         "name":           "Concurrent interference",
-        "center_freq_hz": 2437e6,
+        "center_freq_hz": cf,
         "bandwidth_hz":   20e6,
         "signal_type":    "noise",
         "tx_gain_db":     0,
@@ -74,8 +79,8 @@ def run_concurrent(rx_uri: str | None = None, tx_uri: str | None = None) -> None
     }
 
     # ── Sensing configuration ────────────────────────────────────────────────
-    sense_cf    = 2437e6
-    sense_label = "2.4 GHz ISM – Live (concurrent with TX)"
+    sense_cf    = cf
+    sense_label = f"2.4 GHz ISM – Live (concurrent with TX, Ch{channel})"
     sense_dur   = 60.0
 
     print(f"\n[INFO] RX device: {rx_uri}")

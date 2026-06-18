@@ -26,6 +26,13 @@ DEFAULT_BW_MHZ    = 20       # Interference bandwidth (MHz)
 DEFAULT_TX_GAIN   = 0        # dB attenuation; 0 = max Pluto TX output power
 DEFAULT_DURATION  = 30       # seconds
 
+# 2.4 GHz Wi-Fi channel number -> centre frequency (Hz)
+WIFI_CHANNELS = {
+    1: 2412e6, 2: 2417e6, 3: 2422e6, 4: 2427e6, 5: 2432e6,
+    6: 2437e6, 7: 2442e6, 8: 2447e6, 9: 2452e6, 10: 2457e6,
+    11: 2462e6, 12: 2467e6, 13: 2472e6,
+}
+
 
 # ─── Signal generators ────────────────────────────────────────────────────────
 
@@ -270,12 +277,20 @@ def main() -> None:
 
     target_ip = input("\nTarget IP to ping (e.g. 192.168.1.1 or 8.8.8.8): ").strip() or "8.8.8.8"
 
+    print("\nWhich Wi-Fi channel is your router actually using?")
+    print("Check your router's wireless settings page (avoid 'Auto' — pick a fixed channel).")
+    chan_str = input("Channel number [1-13, default 6]: ").strip()
+    channel  = int(chan_str) if chan_str else 6
+    cf       = WIFI_CHANNELS.get(channel, DEFAULT_CF)
+    print(f"[INFO] Using centre frequency {cf/1e6:.0f} MHz for channel {channel}")
+
     # ── Experiment configurations ──────────────────────────────────────────────
-    # Example: full Wi-Fi channel 6 (20 MHz) vs half (10 MHz) bandwidth
+    # Full channel bandwidth (20 MHz) vs half (10 MHz), centred on the router's
+    # actual channel so the interference actually overlaps the live Wi-Fi link
     experiments = [
         {
-            "name":          "Full Ch6 BW (20 MHz noise)",
-            "center_freq_hz": 2437e6,
+            "name":          f"Full Ch{channel} BW (20 MHz noise)",
+            "center_freq_hz": cf,
             "bandwidth_hz":   20e6,
             "signal_type":    "noise",
             "tx_gain_db":     DEFAULT_TX_GAIN,
@@ -283,8 +298,8 @@ def main() -> None:
             "target_ip":      target_ip,
         },
         {
-            "name":          "Half Ch6 BW (10 MHz noise)",
-            "center_freq_hz": 2437e6,
+            "name":          f"Half Ch{channel} BW (10 MHz noise)",
+            "center_freq_hz": cf,
             "bandwidth_hz":   10e6,
             "signal_type":    "noise",
             "tx_gain_db":     DEFAULT_TX_GAIN,
@@ -292,8 +307,8 @@ def main() -> None:
             "target_ip":      target_ip,
         },
         {
-            "name":          "CW tone at Ch6 centre",
-            "center_freq_hz": 2437e6,
+            "name":          f"CW tone at Ch{channel} centre",
+            "center_freq_hz": cf,
             "bandwidth_hz":   1e6,
             "signal_type":    "cw",
             "tx_gain_db":     DEFAULT_TX_GAIN,
