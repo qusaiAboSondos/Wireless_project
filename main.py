@@ -67,7 +67,7 @@ def run_concurrent(rx_uri: str | None = None, tx_uri: str | None = None) -> None
         "center_freq_hz": 2437e6,
         "bandwidth_hz":   20e6,
         "signal_type":    "noise",
-        "tx_gain_db":     -10,
+        "tx_gain_db":     0,
         "duration_s":     60,
         "target_ip":      target_ip,
         "pluto_uri":      tx_uri,         # TX device

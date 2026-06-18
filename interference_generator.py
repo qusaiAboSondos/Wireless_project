@@ -23,7 +23,7 @@ SAMPLE_RATE = 20e6   # 20 MHz
 # Default interference parameters (2.4 GHz ISM)
 DEFAULT_CF        = 2437e6   # Wi-Fi channel 6 centre (Hz)
 DEFAULT_BW_MHZ    = 20       # Interference bandwidth (MHz)
-DEFAULT_TX_GAIN   = -10      # dBm (keep low for indoor use)
+DEFAULT_TX_GAIN   = 0        # dB attenuation; 0 = max Pluto TX output power
 DEFAULT_DURATION  = 30       # seconds
 
 
