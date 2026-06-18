@@ -62,24 +62,39 @@ def generate_swept_tone(num_samples: int, bw_hz: float) -> np.ndarray:
 # ─── Metrics collection ───────────────────────────────────────────────────────
 
 def measure_ping(target_ip: str, count: int = 5) -> dict:
-    """Run ping and return min/avg/max RTT and packet loss."""
+    """Run ping and return min/avg/max RTT and packet loss (Windows & Linux)."""
+    is_windows = os.name == "nt"
     try:
+        if is_windows:
+            cmd = ["ping", "-n", str(count), "-w", "2000", target_ip]
+        else:
+            cmd = ["ping", "-c", str(count), "-W", "2", target_ip]
+
         result = subprocess.run(
-            ["ping", "-c", str(count), "-W", "2", target_ip],
-            capture_output=True, text=True, timeout=20
+            cmd, capture_output=True, text=True, timeout=20
         )
         output = result.stdout
-        # Parse packet loss
-        loss   = 100.0
-        for line in output.splitlines():
-            if "packet loss" in line:
-                loss = float(line.split("%")[0].split()[-1])
-        # Parse RTT stats
+        loss    = 100.0
         rtt_min = rtt_avg = rtt_max = float("nan")
-        for line in output.splitlines():
-            if "rtt min" in line or "round-trip" in line:
-                parts    = line.split("=")[-1].strip().split("/")
-                rtt_min, rtt_avg, rtt_max = float(parts[0]), float(parts[1]), float(parts[2].split()[0])
+
+        if is_windows:
+            # e.g. "Lost = 0 (0% loss)" and "Minimum = 4ms, Maximum = 5ms, Average = 4ms"
+            for line in output.splitlines():
+                if "loss)" in line:
+                    loss = float(line.split("(")[-1].split("%")[0].strip())
+                if "Average" in line and "Minimum" in line:
+                    rtt_min = float(line.split("Minimum = ")[1].split("ms")[0])
+                    rtt_max = float(line.split("Maximum = ")[1].split("ms")[0])
+                    rtt_avg = float(line.split("Average = ")[1].split("ms")[0])
+        else:
+            for line in output.splitlines():
+                if "packet loss" in line:
+                    loss = float(line.split("%")[0].split()[-1])
+            for line in output.splitlines():
+                if "rtt min" in line or "round-trip" in line:
+                    parts    = line.split("=")[-1].strip().split("/")
+                    rtt_min, rtt_avg, rtt_max = float(parts[0]), float(parts[1]), float(parts[2].split()[0])
+
         return {"loss_pct": loss, "rtt_min_ms": rtt_min,
                 "rtt_avg_ms": rtt_avg, "rtt_max_ms": rtt_max}
     except Exception as e:
